@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 
 # 1. ڕێکخستنی لاپەڕە و دیزاین
-st.set_page_config(page_title="KomarUniAI", page_icon="🎓", layout="centered")
+st.set_page_config(page_title="KomarUniAI", st.image("logo.png", width=120) page_icon="🎓", layout="centered")
 
 st.markdown("""
     <style>
