@@ -1,23 +1,49 @@
 import streamlit as st
 import google.generativeai as genai
 
-# خوێندنەوەی کلیلەکە لە Secrets (دڵنیابە لە ستریمڵێت سەیڤت کردووە)
+# 1. ڕێکخستنی لاپەڕە و دیزاین
+st.set_page_config(page_title="KomarUniAI", page_icon="🎓", layout="centered")
+
+st.markdown("""
+    <style>
+    .stApp { background-color: #131314; color: white; direction: rtl; }
+    .main-title { text-align: center; font-size: 40px; font-weight: bold; color: #8ab4f8; }
+    header, footer {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
+
+st.markdown('<div class="main-title">KomarUniAI 🎓</div>', unsafe_allow_html=True)
+
+# 2. پەیوەندی سکیور بە API
 if "GEMINI_API_KEY" in st.secrets:
-    API_KEY = st.secrets["GEMINI_API_KEY"]
-    genai.configure(api_key=API_KEY)
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
-    st.error("تکایە API Key لە Secrets دابنێ")
+    st.error("تکایە API Key لە بەشی Secrets دابنێ!")
     st.stop()
 
-# لێرەدا ناوی مۆدێلەکە بەبێ وشەی models/ بنووسە
-# ئەگەر 1.5-flash کاری نەکرد، gemini-1.0-pro تاقی بکەرەوە
+# 3. فەنکشنی زیرەک بۆ دۆزینەوەی مۆدێلی بەردەست
+@st.cache_resource
+def load_model():
+    # وەرگرتنی لیستی ئەو مۆدێلانەی بۆ کلیلی تۆ ڕێپێدراون
+    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    
+    # لیستی مۆدێلەکان بەپێی باشترین (Priority)
+    priorities = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-pro']
+    
+    for model_name in priorities:
+        if model_name in available_models:
+            return genai.GenerativeModel(model_name)
+    
+    # ئەگەر هیچ کام لەوانەی سەرەوە نەبوو، یەکەم مۆدێلی بەردەست بەکاربهێنە
+    return genai.GenerativeModel(available_models[0])
+
 try:
-    model = genai.GenerativeModel('gemini-1.5-flash')
-except Exception:
-    model = genai.GenerativeModel('gemini-pro')
+    model = load_model()
+except Exception as e:
+    st.error(f"نەتوانرا پەیوەندی بە سێرڤەرەوە بکرێت: {e}")
+    st.stop()
 
-st.title("🎓 KomarUniAI")
-
+# 4. لۆژیکی چات
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -32,12 +58,9 @@ if prompt := st.chat_input("چی لێکۆڵینەوەیەک بکەم؟"):
 
     with st.chat_message("assistant"):
         try:
-            # بەکارهێنانی generate_content بە سادەیی
+            # بەبێ stream بۆ ئەوەی کەمترین ئەگەری هەڵەی هەبێت
             response = model.generate_content(prompt)
-            if response.text:
-                st.markdown(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
-            else:
-                st.warning("وەڵامەکە بەتاڵ بوو، لەوانەیە کێشەی Safety Filter هەبێت.")
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
         except Exception as e:
-            st.error(f"هەڵەیەک ڕوویدا: {e}")
+            st.error(f"هەڵەیەک لە وەڵامدانەوەدا هەیە: {e}")
