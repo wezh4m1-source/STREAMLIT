@@ -4,7 +4,7 @@ import google.generativeai as genai
 # 1. ڕێکخستنی لاپەڕە
 st.set_page_config(page_title="KomarUniAI", page_icon="🎓", layout="centered")
 
-# 2. چاککردنی ستایلەکە (لێرەدا هەڵەکە هەبوو)
+# 2. ستایل و دیزاین
 st.markdown("""
     <style>
     .stApp {
@@ -19,6 +19,7 @@ st.markdown("""
         background: linear-gradient(to right, #4285f4, #9b72cb, #d96570);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        padding: 20px;
     }
     header {visibility: hidden;}
     footer {visibility: hidden;}
@@ -26,12 +27,12 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">KomarUniAI</div>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; color: #8e918f;">زیرەکی دەستکردی زانکۆی کۆمار</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #8e918f; margin-top: -20px;">زیرەکی دەستکردی زانکۆی کۆمار</p>', unsafe_allow_html=True)
 
-# 3. ڕێکخستنی API
+# 3. ڕێکخستنی API - لێرە ناوی مۆدێلەکەمان چاک کردووە
 API_KEY = "AIzaSyA_hvWBVhBWvTJcE3ScDtJVLPyKNjc1pzg"
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -49,12 +50,11 @@ if prompt := st.chat_input("چی لێکۆڵینەوەیەک بکەم؟"):
         response_placeholder = st.empty()
         full_response = ""
         try:
-            response = model.generate_content(prompt, stream=True)
-            for chunk in response:
-                full_response += chunk.text
-                response_placeholder.markdown(full_response + "▌")
+            # بەکارهێنانی وەڵامدانەوەی ڕاستەوخۆ
+            response = model.generate_content(prompt)
+            full_response = response.text
             response_placeholder.markdown(full_response)
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"کێشەیەک لە API هەیە: {e}")
             
     st.session_state.messages.append({"role": "assistant", "content": full_response})
