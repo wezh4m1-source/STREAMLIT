@@ -1,82 +1,74 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. ڕێکخستنی لاپەڕە
-st.set_page_config(page_title="KomarUniAI", page_icon="🎓", layout="centered")
+# --- ڕێکخستنی لاپەڕە ---
+st.set_page_config(page_title="KomarUniAI", layout="centered")
 
-# 2. CSS بۆ دیزاین و ڕاست-بۆ-چەپ
+# --- دیزاینی لۆگۆ وەک باکگراوند ---
 st.markdown("""
     <style>
-    .stApp { background-color: #131314; color: white; direction: rtl; }
+    .stApp {
+        background-image: linear-gradient(rgba(19, 19, 20, 0.85), rgba(19, 19, 20, 0.95)), 
+                          url("https://raw.githubusercontent.com/wezh4m1-source/STREAMLIT/main/logo.png");
+        background-size: cover;
+        background-attachment: fixed;
+        color: white;
+        direction: rtl;
+    }
     header, footer {visibility: hidden;}
     .main-title {
-        text-align: center; font-size: 45px; font-weight: bold;
-        background: linear-gradient(to right, #4285f4, #9b72cb, #d96570);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        text-align: center;
+        font-size: 50px;
+        font-weight: bold;
+        background: linear-gradient(45deg, #4285f4, #9b72cb);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0px;
     }
-    .logo-container { display: flex; justify-content: center; margin-bottom: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. لۆگۆ (قەبارەی گونجاو)
-st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-try:
-    st.image("logo.png", width=200)
-except:
-    st.write("🎓")
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">KomarUniAI 🎓</div>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #bbb;">Ethics • Knowledge • Skills</p>', unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">KomarUniAI</div>', unsafe_allow_html=True)
-
-# 4. لۆژیکی دۆزینەوەی مۆدێلی گونجاو (بۆ ڕێگری لە 404)
+# --- ڕێکخستنی سکیور ---
 if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    
-    # فەنکشن بۆ دۆزینەوەی مۆدێلی کارا
-    @st.cache_resource
-    def load_best_model():
-        # لیستێک لەو مۆدێلانەی ئەگەری کارکردنیان زۆرە
-        test_models = ['gemini-1.5-flash', 'gemini-pro', 'gemini-1.0-pro']
-        instruction = "تۆ ناوت KomarUniAI یە. بە زمانی کوردییەکی زۆر پاراو و شیرین وەڵام بدەرەوە."
-        
-        for m_name in test_models:
-            try:
-                m = genai.GenerativeModel(model_name=m_name, system_instruction=instruction)
-                # تاقیکردنەوەیەکی خێرا بۆ زانینی ئیشکردن
-                m.generate_content("hi")
-                return m
-            except:
-                continue
-        return None
-
-    model = load_best_model()
+    api_key = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=api_key)
 else:
-    st.error("تکایە API Key لە Secrets دابنێ")
+    st.error("API Key نەدۆزرایەوە!")
     st.stop()
 
-if not model:
-    st.error("هیچ مۆدێلێک وەڵام ناداتەوە. ئەگەری زۆرە کێشەکە لە Region یان Billing بێت لە Google Cloud.")
-    st.stop()
+# --- لۆژیکی پەیوەندی (بۆ تێپەڕاندنی هەڵەی 404) ---
+def generate_response(user_input):
+    # لێرەدا فەرمان دەکەین بە زمانی سادەی کوردی وەڵام بداتەوە
+    full_prompt = f"تۆ لێکۆڵەرێکی کوردی لە زانکۆی کۆمار. زۆر بە کوردییەکی شیرین و پاراو وەڵامی ئەمە بدەرەوە: {user_input}"
+    
+    # تاقیکردنەوەی مۆدێلەکان یەکە بە یەکە بەبێ ڕێنمایی سیستەم (بۆ تێپەڕاندنی سنووری وڵات)
+    for model_name in ['gemini-pro', 'gemini-1.5-flash']:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(full_prompt)
+            return response.text
+        except:
+            continue
+    return "ببورە، سێرڤەرەکانی Google لە ناوچەی تۆدا ڕێگەیان پێنەدراوە. تکایە کلیلێکی نوێ تاقی بکەرەوە یان پڕۆژەیەکی نوێ لە AI Studio دروست بکە."
 
-# 5. مێژووی چات
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# --- سیستەمی چات ---
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-for message in st.session_state.messages:
+for message in st.session_state.chat_history:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 6. وەرگرتنی پرسیار
-if prompt := st.chat_input("چی لێکۆڵینەوەیەک بکەم؟"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+if prompt := st.chat_input("لێرە پرسیارەکەت بنووسە..."):
+    st.session_state.chat_history.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        try:
-            # ناردنی پرسیارەکە بە ڕێنمایی کوردی
-            response = model.generate_content(prompt)
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except Exception as e:
-            st.error(f"هەڵەیەک ڕوویدا: {e}")
+        with st.spinner("خەریکە بیر دەکەمەوە..."):
+            answer = generate_response(prompt)
+            st.markdown(answer)
+            st.session_state.chat_history.append({"role": "assistant", "content": answer})
